@@ -1,0 +1,163 @@
+<!DOCTYPE HTML>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Spring Boot Thymeleaf Application - Climate Summary</title>
+
+    <link rel="stylesheet" href="https://cdn.datatables.net/v/bs4-4.1.1/jq-3.3.1/dt-1.10.23/r-2.2.7/datatables.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css"/>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark static-top">
+    <div class="container">
+        <a class="navbar-brand" href="/">Spring Boot Thymeleaf Application - Climate Summary</a>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="pt-3">
+        <span id="date-label-from" class="date-label">From: </span><input class="date_range_filter date" type="text" id="datepicker_from" autocomplete="off"/>
+        <span id="date-label-to" class="date-label">To:</span><input class="date_range_filter date" type="text" id="datepicker_to" autocomplete="off"/>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-10 pt-3 pb-3">
+            <table id="climateTable" class="table table-striped table-bordered nowrap" style="width:100%">
+                <thead>
+                <tr>
+                    <th>Station_Name</th>
+                    <th>Date</th>
+                    <th>Mean_Temp</th>
+                </tr>
+                </thead>
+                <tfoot>
+                <tr>
+                    <th>Station_Name</th>
+                    <th>Date</th>
+                    <th>Mean_Temp</th>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.datatables.net/v/bs4-4.1.1/jq-3.3.1/dt-1.10.23/r-2.2.7/datatables.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
+<script>
+
+    var oTable = $('#climateTable').DataTable({
+        "processing": true,
+        "serverSide": true,
+        "ajax": {
+            "url": "/history",
+            "type": "POST",
+            "dataType": "json",
+            "contentType": "application/json",
+            "data": function(d) {
+                d.minDate = $('#datepicker_from').val();
+                d.maxDate = $('#datepicker_to').val();
+                return JSON.stringify(d);
+            }
+        },
+        "columns": [{
+                "data": "Station_Name",
+                "width": "50%"
+            },
+            {
+                "data": "Date",
+                "width": "100%"
+            },
+            {
+                "data": "Mean_Temp",
+                "width": "100%"
+            }
+        ]
+    });
+
+    $(function() {
+        $("#datepicker_from").datepicker({
+            changeMonth: true,
+            changeYear: true,
+            showOn: "button",
+            buttonImageOnly: false
+        })
+        .on('changeDate', function (ev) {
+            oTable.draw();
+        })
+        .keyup(function() {
+            oTable.draw();
+        });
+
+        $("#datepicker_to").datepicker({
+            changeMonth: true,
+            changeYear: true,
+            showOn: "button",
+            buttonImageOnly: false
+        })
+        .on('changeDate', function (ev) {
+            oTable.draw();
+        }).keyup(function() {
+            oTable.draw();
+        });
+    });
+
+    $('#climateTable').on('click', 'tbody td', function() {
+        if (this.cellIndex == 2) {
+            // Only response for Mean_Temp column
+             var currentRowData = oTable.row(this.parentElement).data();
+             const clickedRow = oTable.row($(this).closest('tr'));
+             const modalTitle = `Detail information for ${currentRowData.Station_Name}`;
+             $.ajax({
+                url: '/history/' + currentRowData.Station_Name,
+                type: "GET",
+                dataType: 'json',
+                success: function(data) {
+                    $('#detailModal .modal-title').text(modalTitle);
+
+                    var newline = "<tr><td class='tright'><strong>Station_Name</strong></td><td align='right'>"+data.Station_Name+"</td></tr>";
+                    $('#detailModal .modal-body').append(newline);
+                    newline = "<tr><td class='tright'><strong>Province</strong></td><td align='right'>"+data.province+"</td></tr>";
+                    $('#detailModal .modal-body').append(newline);
+                    newline = "<tr><td class='tright'><strong>Date</strong></td><td align='right'>"+data.Date+"</td></tr>";
+                    $('#detailModal .modal-body').append(newline);
+                    newline = "<tr><td class='tright'><strong>Mean_Temp</strong></td><td align='right'>"+data.Mean_Temp+"</td></tr>";
+                    $('#detailModal .modal-body').append(newline);
+                    newline = "<tr><td class='tright'><strong>Highest_Monthly_Max_Temp</strong></td><td align='right'>"+data.highestMonthlyMaxTemp+"</td></tr>";
+                    $('#detailModal .modal-body').append(newline);
+                    newline = "<tr><td class='tright'><strong>Lowest_Monthly_Min_Temp</strong></td><td align='right'>"+data.lowestMonthlyMinTemp+"</td></tr>";
+                    $('#detailModal .modal-body').append(newline);
+
+                    $('#detailModal').modal('show');
+                }
+            });
+        }
+    });
+
+    $('body').on('hidden.bs.modal', '.modal', function () {
+         $("#detailModal .modal-body").html("");
+    });
+
+
+
+</script>
+
+    <div id="detailModal" class="modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"></h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

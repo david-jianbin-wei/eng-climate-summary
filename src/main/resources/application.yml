@@ -1,0 +1,4 @@
+# General environment configuration
+
+source:
+  filename: eng-climate-summary.csv
